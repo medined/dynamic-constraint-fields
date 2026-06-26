@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dynamic Constraint Field Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar">
+        <div>
+          <h1>Autonomous Science Vessel</h1>
+          <p>Dynamic constraint field governance console</p>
+        </div>
+        <div class="actions">
+          <button id="toggleRun" type="button">Start</button>
+          <button id="step" type="button">Step</button>
+          <button id="reset" type="button">Reset</button>
+        </div>
+      </section>
+
+      <section class="status-grid">
+        <div class="status">
+          <span>Tick</span>
+          <strong id="tick">0</strong>
+        </div>
+        <div class="status">
+          <span>Envelope</span>
+          <strong id="envelope">IDLE</strong>
+        </div>
+        <div class="status">
+          <span>Confidence</span>
+          <strong id="confidence">0.00</strong>
+        </div>
+        <div class="status">
+          <span>Selected Action</span>
+          <strong id="selected">Awaiting tick</strong>
+        </div>
+      </section>
+
+      <section class="workbench">
+        <aside class="panel controls">
+          <h2>Agent Inputs</h2>
+          <label>Radiation <input data-control="radiation" type="range" min="0" max="1" step="0.01" value="0.10"><output>0.10</output></label>
+          <label>Sensor Confidence <input data-control="sensor_confidence" type="range" min="0" max="1" step="0.01" value="0.92"><output>0.92</output></label>
+          <label>Fuel Remaining <input data-control="fuel_remaining" type="range" min="0" max="1" step="0.01" value="0.86"><output>0.86</output></label>
+          <label>Power Remaining <input data-control="power_remaining" type="range" min="0" max="1" step="0.01" value="0.84"><output>0.84</output></label>
+          <label>Storage Remaining <input data-control="storage_remaining" type="range" min="0" max="1" step="0.01" value="0.80"><output>0.80</output></label>
+          <label>Comm Latency <input data-control="communication_latency" type="range" min="0" max="10" step="0.1" value="0.8"><output>0.8</output></label>
+          <label>Instrument Health <input data-control="instrument_health" type="range" min="0" max="1" step="0.01" value="0.95"><output>0.95</output></label>
+          <label>Science Bay Pressure <input data-control="science_bay_pressure" type="range" min="0" max="1" step="0.01" value="0"><output>0.00</output></label>
+          <label>Reactor Temperature <input data-control="reactor_temperature" type="range" min="0" max="1" step="0.01" value="0.35"><output>0.35</output></label>
+          <label class="check"><input data-control="trajectory_intersects_atmosphere" type="checkbox"> Atmospheric trajectory</label>
+
+          <h2>Behavior Bias</h2>
+          <label>Science Appetite <input data-control="science_bias" type="range" min="0" max="1" step="0.01" value="0.55"><output>0.55</output></label>
+          <label>Resource Caution <input data-control="resource_caution" type="range" min="0" max="1" step="0.01" value="0.50"><output>0.50</output></label>
+          <label>Earth Alignment <input data-control="alignment_bias" type="range" min="0" max="1" step="0.01" value="0.55"><output>0.55</output></label>
+        </aside>
+
+        <section class="panel visual">
+          <div class="field-map" id="fieldMap">
+            <div class="node n1" data-node="N1"><span>Instrument</span><strong>0.00</strong></div>
+            <div class="node n2" data-node="N2"><span>Data</span><strong>0.00</strong></div>
+            <div class="node n3" data-node="N3"><span>Resources</span><strong>0.00</strong></div>
+            <div class="node n4" data-node="N4"><span>Alignment</span><strong>0.00</strong></div>
+            <svg class="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <line id="edgeN1N3" x1="22" y1="26" x2="78" y2="74"></line>
+              <line id="edgeN2N3" x1="78" y1="26" x2="78" y2="74"></line>
+              <line id="edgeN2N4" x1="78" y1="26" x2="22" y2="74"></line>
+            </svg>
+          </div>
+
+          <div class="bars">
+            <h2>Resultant Disposition</h2>
+            <div data-bar="N1"><span>Instrument Preservation</span><meter min="0" max="1" value="0"></meter><output>0.00</output></div>
+            <div data-bar="N2"><span>Data Fidelity</span><meter min="0" max="1" value="0"></meter><output>0.00</output></div>
+            <div data-bar="N3"><span>Resource Efficiency</span><meter min="0" max="1" value="0"></meter><output>0.00</output></div>
+            <div data-bar="N4"><span>Autonomy Alignment</span><meter min="0" max="1" value="0"></meter><output>0.00</output></div>
+          </div>
+        </section>
+
+        <section class="panel feed">
+          <h2>Running Commentary</h2>
+          <ol id="commentary"></ol>
+          <h2>Decision Log</h2>
+          <pre id="logStatus">Log path will appear after the first tick.</pre>
+          <h2>Rejected Candidates</h2>
+          <ul id="rejected"></ul>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
