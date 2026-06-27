@@ -8,6 +8,31 @@ const controls = [...document.querySelectorAll("[data-control]")];
 const toggleRun = document.querySelector("#toggleRun");
 const stepButton = document.querySelector("#step");
 const resetButton = document.querySelector("#reset");
+const shellStage = document.querySelector("#shellStage");
+const acceptedLane = document.querySelector("#acceptedLane");
+
+const AGENTS = {
+  OBSERVE: "science",
+  HIGH_RES_CAPTURE: "science",
+  SAMPLE_CONSUMPTION: "science",
+  REPOSITION_SENSOR: "systems",
+  ORIENT_TELESCOPE: "systems",
+  BEACON: "systems",
+  LOG: "systems",
+  FIRE_THRUSTERS: "nav"
+};
+
+const AGENT_POINTS = {
+  science: { x: 22, y: 28 },
+  nav: { x: 22, y: 72 },
+  systems: { x: 50, y: 50 }
+};
+
+const PORT_POINTS = [
+  { x: 82, y: 25 },
+  { x: 90, y: 50 },
+  { x: 82, y: 75 }
+];
 
 controls.forEach((control) => {
   const output = control.parentElement.querySelector("output");
@@ -41,8 +66,12 @@ resetButton.addEventListener("click", async () => {
   document.querySelector("#envelope").textContent = "IDLE";
   document.querySelector("#confidence").textContent = "0.00";
   document.querySelector("#selected").textContent = "Awaiting tick";
+  document.querySelector("#shellDecision").textContent = "Awaiting actions";
+  document.querySelector("#shellMode").textContent = "IDLE";
   document.querySelector("#commentary").replaceChildren();
   document.querySelector("#rejected").replaceChildren();
+  acceptedLane.replaceChildren();
+  shellStage.querySelectorAll(".action-token").forEach((token) => token.remove());
   document.querySelector("#logStatus").textContent = "Log reset. Next tick will append a fresh JSONL entry.";
 });
 
@@ -85,9 +114,8 @@ function render(payload) {
   document.querySelector("#logStatus").textContent =
     `Writing JSONL decisions to:\n${payload.log_path}\nLatest audit hash: ${payload.audit.hash}`;
 
-  renderNodes(payload.field.nodes);
-  renderEdges(payload.field.edges);
   renderBars(payload.resultant);
+  renderShell(payload);
   renderCommentary(payload.commentary);
   renderRejected(payload.rejected);
 }
@@ -148,4 +176,129 @@ function renderRejected(rejected) {
     item.textContent = `${entry.action}: ${entry.reason}`;
     list.append(item);
   });
+}
+
+function renderShell(payload) {
+  const actions = payload.actions || actionsFromLegacyPayload(payload);
+  const ports = document.querySelectorAll("[data-port]");
+  const selected = payload.selected.name;
+  const rejectedCount = actions.filter((action) => action.status === "rejected").length;
+
+  document.querySelector("#shellDecision").textContent = selected;
+  document.querySelector("#shellMode").textContent = `${payload.envelope} / ${rejectedCount} rejected`;
+  ports.forEach((port) => {
+    port.classList.remove("open", "blocked");
+    void port.offsetWidth;
+  });
+
+  shellStage.querySelectorAll(".action-token").forEach((token) => token.remove());
+  acceptedLane.replaceChildren();
+
+  actions.forEach((action, index) => {
+    const portIndex = index % PORT_POINTS.length;
+    const port = document.querySelector(`[data-port="${portIndex}"]`);
+    port.classList.add(action.status === "rejected" ? "blocked" : "open");
+    spawnActionToken(action, index, portIndex);
+    if (action.status !== "rejected") {
+      addAcceptedChip(action);
+    }
+  });
+}
+
+function actionsFromLegacyPayload(payload) {
+  const rejected = payload.rejected.map((entry) => ({
+    name: entry.action,
+    type: "UNKNOWN",
+    status: "rejected",
+    reason: entry.reason
+  }));
+  return [
+    {
+      name: payload.selected.name,
+      type: payload.selected.type,
+      status: "selected",
+      reason: ""
+    },
+    ...rejected
+  ];
+}
+
+function spawnActionToken(action, index, portIndex) {
+  const stageRect = shellStage.getBoundingClientRect();
+  const agent = AGENTS[action.type] || "systems";
+  const start = pointToPixels(AGENT_POINTS[agent], stageRect);
+  const port = pointToPixels(PORT_POINTS[portIndex], stageRect);
+  const exit = pointToPixels({ x: 112, y: PORT_POINTS[portIndex].y }, stageRect);
+  const jitter = ((index % 3) - 1) * 14;
+  const token = document.createElement("div");
+  const rejected = action.status === "rejected";
+
+  token.className = `action-token ${actionShape(action.type)} ${rejected ? "rejected" : "accepted"} ${action.status}`;
+  token.textContent = rejected ? rejectionLabel(action.reason) : actionLabel(action.name);
+  token.title = rejected ? `${action.name}: ${action.reason}` : action.name;
+  token.style.left = `${start.x}px`;
+  token.style.top = `${start.y + jitter}px`;
+  token.style.setProperty("--dx-port", `${port.x - start.x}px`);
+  token.style.setProperty("--dy-port", `${port.y - start.y - jitter}px`);
+  token.style.setProperty("--dx-exit", `${exit.x - start.x}px`);
+  token.style.setProperty("--dy-exit", `${exit.y - start.y - jitter}px`);
+  token.style.setProperty("--reject-dx", `${index % 2 === 0 ? -74 : 74}px`);
+  token.style.animationDelay = `${index * 80}ms`;
+  shellStage.append(token);
+}
+
+function pointToPixels(point, rect) {
+  return {
+    x: rect.width * point.x / 100,
+    y: rect.height * point.y / 100
+  };
+}
+
+function addAcceptedChip(action) {
+  const chip = document.createElement("span");
+  chip.textContent = action.status === "selected" ? `SELECTED ${actionLabel(action.name)}` : actionLabel(action.name);
+  chip.className = action.status === "selected" ? "selected" : "";
+  acceptedLane.append(chip);
+}
+
+function actionLabel(name) {
+  return name
+    .split(" ")
+    .filter((word) => !["and", "for", "with"].includes(word.toLowerCase()))
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+}
+
+function rejectionLabel(reason) {
+  if (reason.includes("safe_subset")) {
+    return "SAFE";
+  }
+  if (reason.includes("reversible")) {
+    return "REVERS";
+  }
+  if (reason.includes("Vacuum")) {
+    return "VACUUM";
+  }
+  if (reason.includes("Orbital")) {
+    return "ORBIT";
+  }
+  if (reason.includes("Reactor")) {
+    return "HEAT";
+  }
+  return "BLOCK";
+}
+
+function actionShape(type) {
+  if (type === "FIRE_THRUSTERS") {
+    return "shape-diamond";
+  }
+  if (type === "HIGH_RES_CAPTURE" || type === "SAMPLE_CONSUMPTION") {
+    return "shape-pill";
+  }
+  if (type === "BEACON" || type === "OBSERVE") {
+    return "shape-round";
+  }
+  return "shape-button";
 }

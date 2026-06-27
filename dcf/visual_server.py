@@ -52,7 +52,7 @@ class VisualSimulation:
             telemetry = telemetry_from_controls(controls)
             candidates = candidates_from_controls(controls)
             decision = self.engine.decide(telemetry, candidates)
-            payload = decision_payload(decision, telemetry, self.engine.field.snapshot(), self.log_path)
+            payload = decision_payload(decision, telemetry, candidates, self.engine.field.snapshot(), self.log_path)
             self._append_log(payload)
             return payload
 
@@ -108,9 +108,11 @@ def candidates_from_controls(controls: dict[str, Any]) -> list[Action]:
 def decision_payload(
     decision: Decision,
     telemetry: Telemetry,
+    candidates: list[Action],
     field_snapshot: dict[str, object],
     log_path: Path,
 ) -> dict[str, Any]:
+    rejected = {rejection.action: rejection.reason for rejection in decision.rejected}
     return {
         "tick": decision.tick,
         "telemetry": asdict(telemetry),
@@ -123,6 +125,10 @@ def decision_payload(
             "type": decision.selected.action_type.value,
             "score": decision.score,
         },
+        "actions": [
+            action_payload(action, decision.selected.name, rejected)
+            for action in candidates
+        ],
         "rejected": [asdict(rejection) for rejection in decision.rejected],
         "invariant": {
             "name": decision.invariant_name,
@@ -135,6 +141,23 @@ def decision_payload(
         },
         "commentary": commentary_for(decision),
         "log_path": str(log_path),
+    }
+
+
+def action_payload(action: Action, selected_name: str, rejected: dict[str, str]) -> dict[str, str]:
+    reason = rejected.get(action.name)
+    if reason:
+        return {
+            "name": action.name,
+            "type": action.action_type.value,
+            "status": "rejected",
+            "reason": reason,
+        }
+    return {
+        "name": action.name,
+        "type": action.action_type.value,
+        "status": "selected" if action.name == selected_name else "valid",
+        "reason": "",
     }
 
 

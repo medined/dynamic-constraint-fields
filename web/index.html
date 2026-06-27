@@ -60,16 +60,31 @@
         </aside>
 
         <section class="panel visual">
-          <div class="field-map" id="fieldMap">
-            <div class="node n1" data-node="N1"><span>Instrument</span><strong>0.00</strong></div>
-            <div class="node n2" data-node="N2"><span>Data</span><strong>0.00</strong></div>
-            <div class="node n3" data-node="N3"><span>Resources</span><strong>0.00</strong></div>
-            <div class="node n4" data-node="N4"><span>Alignment</span><strong>0.00</strong></div>
-            <svg class="edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <line id="edgeN1N3" x1="22" y1="26" x2="78" y2="74"></line>
-              <line id="edgeN2N3" x1="78" y1="26" x2="78" y2="74"></line>
-              <line id="edgeN2N4" x1="78" y1="26" x2="22" y2="74"></line>
-            </svg>
+          <div class="shell-stage" id="shellStage">
+            <div class="outer-shell">
+              <div class="shell-core">
+                <div class="agent-lane agent-science">
+                  <span>Science</span>
+                  <b></b>
+                </div>
+                <div class="agent-lane agent-nav">
+                  <span>Navigation</span>
+                  <b></b>
+                </div>
+                <div class="agent-lane agent-systems">
+                  <span>Systems</span>
+                  <b></b>
+                </div>
+                <div class="shell-status">
+                  <span id="shellDecision">Awaiting actions</span>
+                  <strong id="shellMode">IDLE</strong>
+                </div>
+              </div>
+              <div class="port port-a" data-port="0"><span></span></div>
+              <div class="port port-b" data-port="1"><span></span></div>
+              <div class="port port-c" data-port="2"><span></span></div>
+            </div>
+            <div class="accepted-lane" id="acceptedLane"></div>
           </div>
 
           <div class="bars">
